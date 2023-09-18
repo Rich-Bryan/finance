@@ -4,7 +4,7 @@
 
 @Student Name  : Bryan Li
 
-@Date          : 9/1/2023
+@Date          : 9/15/2023
 
 Download daily stock price from Yahoo
 
@@ -27,6 +27,7 @@ import option
 def get_daily_from_yahoo(ticker, start_date, end_date):
     stock = yf.Ticker(ticker)
     # TODO: call Yahoo history method to return a dataframe of daily price data
+    
     df = stock.history(start = start_date, end = end_date, interval = '1d')
     return(df)
 
@@ -39,15 +40,14 @@ def download_data_to_csv(opt, list_of_tickers):
     '''
     for ticker in list_of_tickers:
         df = get_daily_from_yahoo(ticker, opt.start_date, opt.end_date)
+        #add an extra colum
         df['Ticker'] = ticker
 
         csv_filename = os.path.join(opt.output_dir, f'{ticker}_daily.csv')
         df.to_csv(csv_filename, index =False)
 
-        print("hfdhassdfsf")
         print(f'Data for {ticker} saved to {csv_filename}')
 
-    pass
 
 def csv_to_table(csv_file_name, fields_map, db_connection, db_table):
     # insert data from a csv file to a table
@@ -77,7 +77,21 @@ def csv_to_table(csv_file_name, fields_map, db_connection, db_table):
      remember to close the db connection 
     '''
 
-    # end TODO
+    #delete old data for the ticker
+    delete_sql = f"DELETE FROM {db_table} WHERE TICKER = ?"
+    cursor.execute(delete_sql,(ticker,))
+
+    # Turn the DataFrame into tuples
+    data_tuples = [tuple(row) for row in df.values]
+
+    #insert into database
+    inser_query = f"INSERT INTO {db_table} (Ticker, AsOfDate, Open, High, Low, Close, Volume, TurnOver, Dividend) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    cursor.executemany(inser_query, (data_tuples,)) 
+    # Commit changes to the database
+    cursor.commit()
+    
+    # Close the database connection
+    cursor.close()
 
 def save_daily_data_to_sqlite(opt, daily_file_dir, list_of_tickers):
     # read all daily.csv files from a dir and load them into sqlite table
@@ -136,5 +150,5 @@ def run():
         save_daily_data_to_sqlite(opt, opt.output_dir, list_of_tickers)
     
 if __name__ == "__main__":
-    _test()
+    #_test()
     run()
